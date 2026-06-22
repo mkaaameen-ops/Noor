@@ -67,10 +67,11 @@
             display: flex;
         }
         .menu-title {
-            font-size: 2.2rem;
+            font-size: 3.5rem;
+            font-weight: 900;
             color: #d63031;
             text-shadow: 2px 2px 0px #fff;
-            margin: 5px 0;
+            margin: 5px 0 0.2rem 0;
             text-align: center;
             animation: bounce 2s infinite;
             flex-shrink: 0;
@@ -729,7 +730,7 @@
         /* Responsive tweaks */
         @media (max-width: 480px) {
             .menu-title {
-                font-size: 1.6rem;
+                font-size: 2.8rem;
             }
             .menu-card {
                 height: 70px;
@@ -832,6 +833,9 @@
             }
         }
         @media (max-width: 380px) {
+            .menu-title {
+                font-size: 2.2rem;
+            }
             .menu-grid {
                 gap: 6px;
             }
@@ -931,7 +935,7 @@
 
     <!-- ===== MAIN MENU ===== -->
     <div id="menuView" class="view active">
-        <div class="menu-title">عَالَمِي الجَمِيل 🌟</div>
+        <div class="menu-title">🌟 عَالَمِي الجَمِيل 🌟</div>
         <div class="menu-grid">
             <div class="menu-card game-mode" onclick="switchView('studioVoiceView')" style="border-color: #00b894;">
                 <div class="card-emoji">🎤</div>
@@ -1136,29 +1140,68 @@
         }
 
         // ==============================
-        // 2.5 MELODY PLAYER FOR SONGS
+        // 2.5 MELODY PLAYER FOR SONGS (REALISTIC & SLOWER)
         // ==============================
         function playMelody(songId) {
             initAudio();
             const notes = [];
-            // Simple recognizable melodies (using C4=261, G4=392, A4=440, E4=329, etc.)
-            // Using frequencies: C5=523, D5=587, E5=659, F5=698, G5=784, A5=880, B5=988, C6=1047
+            // Slower tempo: each note lasts 0.35s, gap 0.12s between notes
+            const noteDur = 0.35;
+            const gap = 0.12;
+            // Frequencies (C5, D5, E5, F5, G5, A5, B5, C6)
+            const C5 = 523,
+                D5 = 587,
+                E5 = 659,
+                F5 = 698,
+                G5 = 784,
+                A5 = 880,
+                B5 = 988,
+                C6 = 1047;
+
             if (songId === 1) { // Twinkle Twinkle: C C G G A A G
-                notes.push([523, 0.15], [523, 0.15], [784, 0.15], [784, 0.15], [880, 0.15], [880, 0.15], [784, 0.3]);
+                notes.push([C5, noteDur], [C5, noteDur], [G5, noteDur], [G5, noteDur], [A5, noteDur], [A5, noteDur], [G5,
+                    noteDur * 1.5
+                ]);
             } else if (songId === 2) { // Old MacDonald: C C G G A G
-                notes.push([523, 0.15], [523, 0.15], [784, 0.15], [784, 0.15], [880, 0.15], [784, 0.3]);
+                notes.push([C5, noteDur], [C5, noteDur], [G5, noteDur], [G5, noteDur], [A5, noteDur], [G5, noteDur * 1.5]);
             } else if (songId === 3) { // Baby Shark: E5 E5 E5 (doo doo doo)
-                notes.push([659, 0.12], [659, 0.12], [659, 0.12]);
-            } else if (songId === 4) { // Wheels on the Bus: C C G G A G (similar to Old Mac)
-                notes.push([523, 0.15], [523, 0.15], [784, 0.15], [784, 0.15], [880, 0.15], [784, 0.3]);
+                notes.push([E5, noteDur], [E5, noteDur], [E5, noteDur * 1.5]);
+            } else if (songId === 4) { // Wheels on the Bus: C C G G A G
+                notes.push([C5, noteDur], [C5, noteDur], [G5, noteDur], [G5, noteDur], [A5, noteDur], [G5, noteDur * 1.5]);
             } else if (songId === 5) { // If You're Happy: C E G C (ascending)
-                notes.push([523, 0.15], [659, 0.15], [784, 0.15], [1047, 0.25]);
+                notes.push([C5, noteDur], [E5, noteDur], [G5, noteDur], [C6, noteDur * 1.5]);
             }
 
             let time = 0;
             notes.forEach(([freq, dur]) => {
-                setTimeout(() => playTone(freq, dur, 'sine', 0.25), time * 1000);
-                time += dur + 0.05;
+                // Main note with 'sawtooth' for richness
+                setTimeout(() => {
+                    const ctx = initAudio();
+                    // Main oscillator (sawtooth gives fuller sound)
+                    const osc1 = ctx.createOscillator();
+                    osc1.type = 'sawtooth';
+                    osc1.frequency.setValueAtTime(freq, ctx.currentTime);
+                    const gain1 = ctx.createGain();
+                    gain1.gain.setValueAtTime(0.2, ctx.currentTime);
+                    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+                    osc1.connect(gain1);
+                    gain1.connect(ctx.destination);
+                    osc1.start();
+                    osc1.stop(ctx.currentTime + dur);
+
+                    // Harmonic (one octave lower, sine wave) for warmth
+                    const osc2 = ctx.createOscillator();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(freq / 2, ctx.currentTime);
+                    const gain2 = ctx.createGain();
+                    gain2.gain.setValueAtTime(0.12, ctx.currentTime);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+                    osc2.connect(gain2);
+                    gain2.connect(ctx.destination);
+                    osc2.start();
+                    osc2.stop(ctx.currentTime + dur);
+                }, time * 1000);
+                time += dur + gap;
             });
         }
 
